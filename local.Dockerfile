@@ -7,4 +7,4 @@ COPY ./gatsby-config.js ./code/gatsby-config.js
 COPY ./.cache ./code/.cache
 
 WORKDIR /code
-CMD ["node_modules/.bin/gatsby", "serve"]
+CMD ["node_modules/.bin/gatsby", "serve", "--host=0.0.0.0"]
