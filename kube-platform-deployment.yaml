@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gatsby-hello-demo
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      gh: web
+  template:
+    metadata:
+      labels:
+        gh: web
+    spec:
+      containers:
+      - name: gatsby-hello-c2
+        image: gatsby-hello:v1
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gh-entrypoint
+  namespace: default
+spec:
+  type: NodePort
+  selector:
+    gh: web
+  ports:
+  - port: 9000
+    targetPort: 9000
+    nodePort: 30001

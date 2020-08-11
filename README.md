@@ -1,27 +1,105 @@
-<!-- AUTO-GENERATED-CONTENT:START (STARTER) -->
 <p align="center">
   <a href="https://www.gatsbyjs.org">
     <img alt="Gatsby" src="https://www.gatsbyjs.org/monogram.svg" width="60" />
   </a>
 </p>
 <h1 align="center">
-  Gatsby's hello-world starter
+  Gatsby + Docker, Kubernetes & Istio
 </h1>
 
-Kick off your project with this hello-world boilerplate. This starter ships with the main Gatsby configuration files you might need to get up and running blazing fast with the blazing fast app generator for React.
+## 💫 Deploy using Docker, Kubernetes & Istio
 
-_Have another more specific idea? You may want to check out our vibrant collection of [official and community-created starters](https://www.gatsbyjs.org/docs/gatsby-starters/)._
+### Tools Required
+1. Docker Desktop for Mac / Windows
+2. Download Istio from https://github.com/istio/istio/releases/ 
+
+### Local Environment Setup
+1. Enable Kubernetes on Docker Desktop
+2. Add the Istio **/bin** folder to the $PATH
+
+### UI Deployment Instructions
+
+#### 1. Create the docker image
+
+```shell
+# 'Install the dependencies'
+npm install
+
+# 'Create a Gatsby application build'
+npm run build 
+
+# 'Copy the build contents into a docker image'
+docker build -t gatsby-hello:v1 -f local.Dockerfile . 
+```
+
+#### 2. Run the docker image as a container
+```shell
+# 'Creates a docker container using the docker image'
+docker run --name gatsby-hello-container1 -d -p 8000:9000 gatsby-hello:v1
+```
+The above command may or may not create a container inside the Kubernetes cluster, depending whether it is enabled in the Docker for Desktop. You may now access the application at http://localhost:8000
+
+#### 3. Deploy the docker image created in Step #1 to the Kubernetes cluster
+```shell
+# 'Create a Kubernetes Pod'
+kubectl apply -f kube-platform-deployment.yaml
+
+# 'View the newly created Pod'
+kubectl get pod
+
+# 'Stream logs from a container in a pod'
+kubectl logs <name-of-pod> -c <name-of-container> -f
+
+# 'Shows a lis of deployed services'
+kubectl get service
+
+# 'You may also delete the Services & Deployment'
+kubectl delete -f kube-platform-deployment.yaml
+```
+You may now access the application at http://localhost:30001. This doesn't make use of the Istio service mesh to routing traffic to the Container. Instead it uses the NodePort service. See [kube-platform-deployment.yaml](kube-platform-deploymwnt.yaml) 
+
+At this point, even though we haven't run any specific commands for Istio, the pod created contains an Istio Envoy Proxy. This happens because of the Automatic Sidecar Injection configuration; which is default Out-of-the-box. This can be verified by running the following commands.
+```shell
+# 'Shows how containers per Pod. Expected value is 2/2'
+kubectl get pods
+
+# 'Shows the containers and other details in a Pod'
+kubectl describe pod <name-of-the-pod>
+```
+
+#### 4. Deploy the docker image created in Step #1 to the Kubernetes cluster and route traffic using Istio
+
+1. Create Istio Gateway & Virtual Service
+```shell
+kubectl apply -k istio-gateway-and-virtual-service.yaml
+
+# 'View the newly created gateway'
+kubectl get gateway
+
+# 'View the newly created gateway details'
+kubectl describe gateway <name-of-the-gateway>
+
+
+
+# 'You may also delete the Gateway & Virtual Service'
+kubectl delete -f istio-gateway-and-virtual-service.yaml
+```
+
+2. Determine Ingress Host / Port & access the application
+```shell
+# 'Ensure Istio Gateway is using an External Load Balancer. EXTERNAL-IP column should not be empty.'
+kubectl get svc istio-ingressgateway -n istio-system
+
+export INGRESS_HOST=$(kubectl -n istio-system get service istio-ingressgateway -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+
+export INGRESS_PORT=$(kubectl -n istio-system get service istio-ingressgateway -o jsonpath='{.spec.ports[?(@.name=="http2")].nodePort}')
+
+# 'Optional'
+export GATEWAY_URL=$INGRESS_HOST:$INGRESS_PORT
+```
+This typically resolves to http://localhost:80/. The final URL to access your application is http://localhost/default/gatsby-hello/
 
 ## 🚀 Quick start
-
-1.  **Create a Gatsby site.**
-
-    Use the Gatsby CLI to create a new site, specifying the hello-world starter.
-
-    ```shell
-    # create a new Gatsby site using the hello-world starter
-    gatsby new my-hello-world-starter https://github.com/gatsbyjs/gatsby-starter-hello-world
-    ```
 
 1.  **Start developing.**
 
@@ -40,7 +118,7 @@ _Have another more specific idea? You may want to check out our vibrant collecti
 
     Open the `my-hello-world-starter` directory in your code editor of choice and edit `src/pages/index.js`. Save your changes and the browser will update in real time!
 
-## 🧐 What's inside?
+## 🧐 What's inside the Gatsby App?
 
 A quick look at the top-level files and directories you'll see in a Gatsby project.
 
@@ -90,10 +168,15 @@ Looking for more guidance? Full documentation for Gatsby lives [on the website](
 
 - **To dive straight into code samples, head [to our documentation](https://www.gatsbyjs.org/docs/).** In particular, check out the _Guides_, _API Reference_, and _Advanced Tutorials_ sections in the sidebar.
 
-## 💫 Deploy
+## References
 
-[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/gatsbyjs/gatsby-starter-hello-world)
+### Kubernetes
+1. https://docs.docker.com/get-started/kube-deploy/
+2. https://kubectl.docs.kubernetes.io/pages/container_debugging/container_logs.html
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/import/project?template=https://github.com/gatsbyjs/gatsby-starter-hello-world)
-
-<!-- AUTO-GENERATED-CONTENT:END -->
+### Istio
+1. https://istio.io/latest/docs/setup/getting-started/
+2. https://istio.io/v1.0/docs/setup/kubernetes/sidecar-injection/#automatic-sidecar-injection
+3. https://istio.io/v1.0/docs/tasks/traffic-management/ingress/#determining-the-ingress-ip-and-ports
+4. https://istio-releases.github.io/v0.1/docs/tasks/integrating-services-into-istio.html
+5. https://istio.io/latest/docs/reference/config/networking/virtual-service/
